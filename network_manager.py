@@ -3,7 +3,13 @@ import json
 import threading
 import time
 from typing import Dict, List, Callable, Optional
-import config
+try:
+    import server_config as config
+except ImportError:
+    try:
+        import client_config as config
+    except ImportError:
+        import config
 from database import Database
 
 class NetworkManager:
@@ -23,6 +29,7 @@ class NetworkManager:
     def register_message_handlers(self):
         """Регистрация обработчиков различных типов сообщений"""
         self.message_handlers = {
+            'auth_request': self.handle_auth_request,
             'message': self.handle_text_message,
             'status_update': self.handle_status_update,
             'heartbeat': self.handle_heartbeat,
@@ -117,6 +124,44 @@ class NetworkManager:
             handler(message, client_socket, address)
         else:
             print(f"Неизвестный тип сообщения: {message_type}")
+    
+    def handle_auth_request(self, message: Dict, client_socket: socket.socket, address: tuple):
+        """Обработка запроса аутентификации"""
+        user_id = message.get('user_id')
+        
+        if user_id:
+            # Проверяем, существует ли пользователь, если нет - создаем
+            user = self.database.get_user(user_id)
+            if not user:
+                # Создаем нового пользователя
+                self.database.add_user(user_id)
+                print(f"Создан новый пользователь: {user_id}")
+            
+            # Добавляем пользователя в список подключенных
+            self.connected_users[user_id] = (client_socket, address)
+            
+            # Обновляем статус в БД
+            self.database.update_user_status(user_id, True)
+            
+            # Отправляем подтверждение аутентификации
+            response = {
+                'type': 'auth_response',
+                'success': True,
+                'user_id': user_id,
+                'message': 'Аутентификация успешна'
+            }
+            self.send_message(client_socket, response)
+            
+            print(f"Пользователь {user_id} успешно аутентифицирован")
+            print(f"Подключенные пользователи: {list(self.connected_users.keys())}")
+        else:
+            # Отправляем ошибку аутентификации
+            response = {
+                'type': 'auth_response',
+                'success': False,
+                'message': 'Не указан ID пользователя'
+            }
+            self.send_message(client_socket, response)
     
     def handle_text_message(self, message: Dict, client_socket: socket.socket, address: tuple):
         """Обработка текстового сообщения"""

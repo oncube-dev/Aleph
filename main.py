@@ -9,7 +9,13 @@ import os
 import signal
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import QTimer
-import config
+try:
+    import client_config as config
+except ImportError:
+    try:
+        import server_config as config
+    except ImportError:
+        import config
 from auth_window import AuthWindow
 from main_window import MainWindow
 from database import Database

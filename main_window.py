@@ -8,7 +8,11 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QInputDialog, QScrollArea, QSizePolicy)
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QThread, pyqtSlot
 from PyQt5.QtGui import QFont, QPixmap, QPalette, QColor, QIcon, QPainter, QBrush
-import config
+try:
+    import client_config as config
+except ImportError:
+    # Если client_config не найден, используем встроенный config
+    import config
 from database import Database
 from network_manager import NetworkManager
 from audio_manager import AudioManager

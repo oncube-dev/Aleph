@@ -9,13 +9,13 @@ DATABASE_PATH = "messenger.db"
 
 # Настройки сети для сервера
 HOST = "0.0.0.0"  # Слушаем на всех интерфейсах для внешних подключений
-PORT = 25565       # Порт сервера
+PORT = 47990       # Порт сервера
 HEARTBEAT_INTERVAL = 30  # секунды
 ONLINE_TIMEOUT = 60  # секунды
 
 # Внешний IP (для информации)
 EXTERNAL_IP = "31.131.220.221"
-EXTERNAL_PORT = 25565
+EXTERNAL_PORT = 47990
 
 # Настройки аудио
 AUDIO_SAMPLE_RATE = 44100

@@ -5,7 +5,13 @@ import time
 import wave
 import numpy as np
 from typing import Optional, Callable
-import config
+try:
+    import client_config as config
+except ImportError:
+    try:
+        import server_config as config
+    except ImportError:
+        import config
 
 class AudioManager:
     def __init__(self):

@@ -1,7 +1,13 @@
 import sqlite3
 import datetime
 from typing import List, Dict, Optional
-import config
+try:
+    import server_config as config
+except ImportError:
+    try:
+        import client_config as config
+    except ImportError:
+        import config
 
 class Database:
     def __init__(self, db_path: str = None):

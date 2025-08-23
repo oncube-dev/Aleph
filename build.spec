@@ -14,6 +14,7 @@ a = Analysis(
         'pyaudio',
         'sqlite3',
         'config',
+        'client_config',
         'database',
         'network_manager',
         'audio_manager'

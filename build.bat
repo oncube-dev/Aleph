@@ -22,7 +22,7 @@ if exist "builds\AlephMessenger.exe" (
     dir "builds\AlephMessenger.exe" | find "AlephMessenger.exe"
     echo.
     echo Приложение готово к использованию!
-    echo IP сервера: 31.131.220.221:25565
+    echo IP сервера: 31.131.220.221:47990
 ) else (
     echo ❌ Ошибка сборки!
 )
