@@ -7,18 +7,21 @@ Aleph Messenger - Главный файл приложения
 import sys
 import os
 import signal
-from PyQt5.QtWidgets import QApplication, QMessageBox
-from PyQt5.QtCore import QTimer
+from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import QTimer
+# Добавляем путь к src в PYTHONPATH
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
 try:
-    import client_config as config
+    from src.config import client_config as config
 except ImportError:
     try:
-        import server_config as config
+        from src.config import server_config as config
     except ImportError:
-        import config
-from auth_window import AuthWindow
-from main_window import MainWindow
-from database import Database
+        from src.config import config
+from src.ui.auth_window import AuthWindow
+from src.ui.main_window import MainWindow
+from src.database.database import Database
 
 def signal_handler(signum, frame):
     """Обработчик сигналов для корректного завершения"""
@@ -28,10 +31,10 @@ def signal_handler(signum, frame):
 def check_dependencies():
     """Проверка зависимостей"""
     try:
-        import PyQt5
-        print("✓ PyQt5 найден")
+        import PySide6
+        print("✓ PySide6 найден")
     except ImportError:
-        print("✗ PyQt5 не найден. Установите: pip install PyQt5")
+        print("✗ PySide6 не найден. Установите: pip install PySide6")
         return False
     
     try:
@@ -143,7 +146,7 @@ def main():
     
     # Запуск главного цикла приложения
     try:
-        return app.exec_()
+        return app.exec()
     except KeyboardInterrupt:
         print("\nПриложение прервано пользователем")
         return 0

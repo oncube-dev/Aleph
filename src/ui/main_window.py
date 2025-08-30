@@ -1,21 +1,26 @@
 import sys
 import time
 from datetime import datetime
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QTextEdit, 
                              QListWidget, QListWidgetItem, QSplitter, 
-                             QFrame, QMessageBox, QMenu, QAction, QDialog,
+                             QFrame, QMessageBox, QMenu, QDialog,
                              QInputDialog, QScrollArea, QSizePolicy)
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QThread, pyqtSlot
-from PyQt5.QtGui import QFont, QPixmap, QPalette, QColor, QIcon, QPainter, QBrush
+from PySide6.QtCore import Qt, Signal, QTimer, QThread, Slot
+from PySide6.QtGui import QFont, QPixmap, QPalette, QColor, QIcon, QPainter, QBrush, QAction
+import sys
+import os
+# Добавляем путь к src в PYTHONPATH
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
 try:
-    import client_config as config
+    from src.config import client_config as config
 except ImportError:
     # Если client_config не найден, используем встроенный config
-    import config
-from database import Database
-from network_manager import NetworkManager
-from audio_manager import AudioManager
+    from src.config import config
+from src.database.database import Database
+from src.network.network_manager import NetworkManager
+from src.audio.audio_manager import AudioManager
 
 class ContactItem(QWidget):
     """Виджет элемента контакта в списке"""
@@ -524,8 +529,8 @@ class MainWindow(QMainWindow):
     """Главное окно мессенджера"""
     
     # Сигналы
-    start_call = pyqtSignal(str)
-    open_chat = pyqtSignal(str)
+    start_call = Signal(str)
+    open_chat = Signal(str)
     
     def __init__(self, user_id: str):
         super().__init__()

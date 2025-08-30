@@ -3,14 +3,19 @@ import json
 import threading
 import time
 from typing import Dict, List, Callable, Optional
+import sys
+import os
+# Добавляем путь к src в PYTHONPATH
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
 try:
-    import server_config as config
+    from src.config import server_config as config
 except ImportError:
     try:
-        import client_config as config
+        from src.config import client_config as config
     except ImportError:
-        import config
-from database import Database
+        from src.config import config
+from src.database.database import Database
 
 class NetworkManager:
     def __init__(self, database: Database):
@@ -45,36 +50,50 @@ class NetworkManager:
         host = host or config.HOST
         port = port or config.PORT
         
+        print(f"Попытка запуска сервера на {host}:{port}")
+        
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            print(f"Сокет создан, привязка к {host}:{port}")
             self.socket.bind((host, port))
+            print("Сокет привязан, настройка прослушивания")
             self.socket.listen(5)
             self.is_running = True
             
-            print(f"Сервер запущен на {host}:{port}")
+            print(f"✓ Сервер запущен на {host}:{port}")
             
             # Запуск потока для принятия подключений
+            print("Запуск потока принятия подключений...")
             accept_thread = threading.Thread(target=self.accept_connections)
             accept_thread.daemon = True
             accept_thread.start()
+            print("✓ Поток принятия подключений запущен")
             
             # Запуск потока для heartbeat
+            print("Запуск потока heartbeat...")
             self.heartbeat_thread = threading.Thread(target=self.heartbeat_loop)
             self.heartbeat_thread.daemon = True
             self.heartbeat_thread.start()
+            print("✓ Поток heartbeat запущен")
             
             return True
         except Exception as e:
-            print(f"Ошибка запуска сервера: {e}")
+            print(f"✗ Ошибка запуска сервера: {e}")
             return False
     
     def accept_connections(self):
         """Принятие входящих подключений"""
+        print("Поток принятия подключений запущен")
+        print(f"Сокет сервера: {self.socket}")
+        print(f"is_running: {self.is_running}")
+        
         while self.is_running:
             try:
+                print("Ожидание нового подключения...")
                 client_socket, address = self.socket.accept()
-                print(f"Новое подключение от {address}")
+                print(f"✓ Новое подключение от {address}")
+                print(f"Клиентский сокет: {client_socket}")
                 
                 # Запуск потока для обработки клиента
                 client_thread = threading.Thread(
@@ -83,28 +102,38 @@ class NetworkManager:
                 )
                 client_thread.daemon = True
                 client_thread.start()
+                print(f"✓ Поток обработки клиента {address} запущен")
                 
             except Exception as e:
                 if self.is_running:
-                    print(f"Ошибка принятия подключения: {e}")
+                    print(f"✗ Ошибка принятия подключения: {e}")
+                    import traceback
+                    traceback.print_exc()
     
     def handle_client(self, client_socket: socket.socket, address: tuple):
         """Обработка клиентского подключения"""
+        print(f"Начало обработки клиента {address}")
         try:
             while self.is_running:
+                print(f"Ожидание данных от клиента {address}...")
                 data = client_socket.recv(4096)
                 if not data:
+                    print(f"Клиент {address} закрыл соединение")
                     break
                 
+                print(f"Получены данные от {address}: {data}")
                 try:
                     message = json.loads(data.decode('utf-8'))
+                    print(f"JSON декодирован успешно: {message}")
                     self.process_message(message, client_socket, address)
-                except json.JSONDecodeError:
-                    print(f"Ошибка декодирования JSON от {address}")
+                except json.JSONDecodeError as e:
+                    print(f"Ошибка декодирования JSON от {address}: {e}")
+                    print(f"Полученные данные: {data}")
                     
         except Exception as e:
             print(f"Ошибка обработки клиента {address}: {e}")
         finally:
+            print(f"Завершение обработки клиента {address}")
             # Удаление пользователя из списка подключенных
             for user_id, (sock, addr) in list(self.connected_users.items()):
                 if sock == client_socket:
@@ -118,9 +147,13 @@ class NetworkManager:
     def process_message(self, message: Dict, client_socket: socket.socket, address: tuple):
         """Обработка входящего сообщения"""
         message_type = message.get('type')
+        print(f"Сервер получил сообщение типа: {message_type} от {address}")
+        print(f"Содержимое сообщения: {message}")
+        
         handler = self.message_handlers.get(message_type)
         
         if handler:
+            print(f"Вызываем обработчик для {message_type}")
             handler(message, client_socket, address)
         else:
             print(f"Неизвестный тип сообщения: {message_type}")
@@ -128,6 +161,7 @@ class NetworkManager:
     def handle_auth_request(self, message: Dict, client_socket: socket.socket, address: tuple):
         """Обработка запроса аутентификации"""
         user_id = message.get('user_id')
+        print(f"Обработка запроса аутентификации для пользователя: {user_id}")
         
         if user_id:
             # Проверяем, существует ли пользователь, если нет - создаем
@@ -136,12 +170,16 @@ class NetworkManager:
                 # Создаем нового пользователя
                 self.database.add_user(user_id)
                 print(f"Создан новый пользователь: {user_id}")
+            else:
+                print(f"Пользователь {user_id} уже существует")
             
             # Добавляем пользователя в список подключенных
             self.connected_users[user_id] = (client_socket, address)
+            print(f"Пользователь {user_id} добавлен в список подключенных")
             
             # Обновляем статус в БД
             self.database.update_user_status(user_id, True)
+            print(f"Статус пользователя {user_id} обновлен в БД")
             
             # Отправляем подтверждение аутентификации
             response = {
@@ -308,6 +346,7 @@ class NetworkManager:
         try:
             data = json.dumps(message).encode('utf-8')
             client_socket.send(data)
+            print(f"Сервер отправил сообщение: {message}")
         except Exception as e:
             print(f"Ошибка отправки сообщения: {e}")
     

@@ -1,21 +1,28 @@
 import sys
+import os
 import json
 import socket
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QMessageBox, QFrame)
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QFont, QPixmap, QPalette, QColor
+from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtGui import QFont, QPixmap, QPalette, QColor
+
+# Добавляем путь к корню проекта в PYTHONPATH
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, '..', '..')
+sys.path.insert(0, project_root)
+
 try:
-    import client_config as config
+    from src.config import client_config as config
 except ImportError:
     # Если client_config не найден, используем встроенный config
-    import config
+    from src.config import config
 
 class AuthWindow(QWidget):
     """Окно аутентификации пользователя"""
     
     # Сигнал успешной аутентификации
-    auth_successful = pyqtSignal(str)
+    auth_successful = Signal(str)
     
     def __init__(self):
         super().__init__()
@@ -199,14 +206,14 @@ class AuthWindow(QWidget):
                 if response and response.get('success'):
                     QMessageBox.information(self, "Успех", f"Добро пожаловать, {user_id}!")
                     self.auth_successful.emit(user_id)
-                    self.close()
+                    # НЕ закрываем соединение здесь - оно нужно для работы мессенджера
                 else:
                     error_msg = response.get('message', 'Ошибка аутентификации') if response else 'Нет ответа от сервера'
                     QMessageBox.critical(self, "Ошибка", f"Ошибка аутентификации: {error_msg}")
+                    self.disconnect_from_server()
                     
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка", f"Ошибка при аутентификации: {str(e)}")
-            finally:
                 self.disconnect_from_server()
         else:
             QMessageBox.critical(self, "Ошибка", "Не удалось подключиться к серверу")
@@ -214,9 +221,11 @@ class AuthWindow(QWidget):
     def connect_to_server(self):
         """Подключение к серверу"""
         try:
+            print(f"Подключение к серверу {config.SERVER_HOST}:{config.SERVER_PORT}...")
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.settimeout(10)  # 10 секунд таймаут
             self.socket.connect((config.SERVER_HOST, config.SERVER_PORT))
+            print("✓ Подключение к серверу установлено")
             return True
         except Exception as e:
             print(f"Ошибка подключения к серверу: {e}")
@@ -234,18 +243,33 @@ class AuthWindow(QWidget):
     def send_message(self, message):
         """Отправка сообщения на сервер"""
         if self.socket:
-            data = json.dumps(message).encode('utf-8')
-            self.socket.send(data)
+            try:
+                data = json.dumps(message).encode('utf-8')
+                self.socket.send(data)
+                print(f"Отправлено на сервер: {message}")
+            except Exception as e:
+                print(f"Ошибка отправки сообщения: {e}")
+                raise
     
     def receive_message(self):
         """Получение ответа от сервера"""
         if self.socket:
             try:
+                print("Ожидание ответа от сервера...")
                 data = self.socket.recv(4096)
                 if data:
-                    return json.loads(data.decode('utf-8'))
+                    response = json.loads(data.decode('utf-8'))
+                    print(f"Получен ответ от сервера: {response}")
+                    return response
+                else:
+                    print("Сервер закрыл соединение")
+                    return None
+            except socket.timeout:
+                print("Таймаут ожидания ответа от сервера")
+                return None
             except Exception as e:
                 print(f"Ошибка получения ответа: {e}")
+                return None
         return None
     
 

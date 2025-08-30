@@ -14,7 +14,7 @@ HEARTBEAT_INTERVAL = 30  # секунды
 ONLINE_TIMEOUT = 60  # секунды
 
 # Внешний IP (для информации)
-EXTERNAL_IP = "31.131.220.221"
+EXTERNAL_IP = "95.165.156.43"
 EXTERNAL_PORT = 47990
 
 # Настройки аудио
@@ -25,7 +25,7 @@ AUDIO_CHANNELS = 1
 # Тестовые пользователи по умолчанию
 DEFAULT_USERS = ["user1", "user2", "user3", "admin", "test"]
 
-# Пути к файлам
+# Пути к файламc
 ASSETS_DIR = "assets"
 ICONS_DIR = os.path.join(ASSETS_DIR, "icons")
 SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds")

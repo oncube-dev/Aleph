@@ -5,12 +5,19 @@ Aleph Messenger - Сервер для тестирования
 """
 
 import sys
+import os
 import signal
 import threading
 import time
-from database import Database
-from network_manager import NetworkManager
-import server_config as config
+
+# Добавляем путь к корню проекта в PYTHONPATH
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_dir, '..', '..')
+sys.path.insert(0, project_root)
+
+from src.database.database import Database
+from src.network.network_manager import NetworkManager
+from src.config import server_config as config
 
 def signal_handler(signum, frame):
     """Обработчик сигналов для корректного завершения"""

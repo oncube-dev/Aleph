@@ -1,13 +1,18 @@
 import sqlite3
 import datetime
 from typing import List, Dict, Optional
+import sys
+import os
+# Добавляем путь к src в PYTHONPATH
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
 try:
-    import server_config as config
+    from src.config import server_config as config
 except ImportError:
     try:
-        import client_config as config
+        from src.config import client_config as config
     except ImportError:
-        import config
+        from src.config import config
 
 class Database:
     def __init__(self, db_path: str = None):
