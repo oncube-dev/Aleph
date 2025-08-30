@@ -91,7 +91,7 @@ class AuthWindow(QWidget):
         """)
         
         self.user_id_input = QLineEdit()
-        self.user_id_input.setPlaceholderText("Введите ваш уникальный ID")
+        self.user_id_input.setPlaceholderText("Введите ID: user1, user2, user3, admin, test")
         self.user_id_input.setFont(QFont("Segoe UI", 12))
         self.user_id_input.setFixedHeight(45)
         self.user_id_input.setStyleSheet("""
@@ -150,6 +150,18 @@ class AuthWindow(QWidget):
         main_layout.addWidget(subtitle_label)
         main_layout.addWidget(user_id_label)
         main_layout.addWidget(self.user_id_input)
+        
+        # Подсказка о разрешенных пользователях
+        hint_label = QLabel("Разрешенные ID: user1, user2, user3, admin, test")
+        hint_label.setFont(QFont("Segoe UI", 10))
+        hint_label.setStyleSheet("""
+            color: #7f8c8d;
+            margin-top: 5px;
+            font-style: italic;
+        """)
+        hint_label.setAlignment(Qt.AlignCenter)
+        
+        main_layout.addWidget(hint_label)
         main_layout.addSpacing(20)
         main_layout.addWidget(self.login_button)
         

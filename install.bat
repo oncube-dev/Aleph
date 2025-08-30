@@ -78,4 +78,6 @@ echo.
 echo Для запуска сервера: python src\core\server.py
 echo Для запуска клиента: python main.py
 echo.
+echo Или напрямую: python src\core\main.py
+echo.
 pause

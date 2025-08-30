@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QFrame, QMessageBox, QMenu, QDialog,
                              QInputDialog, QScrollArea, QSizePolicy)
 from PySide6.QtCore import Qt, Signal, QTimer, QThread, Slot
-from PySide6.QtGui import QFont, QPixmap, QPalette, QColor, QIcon, QPainter, QBrush, QAction
+from PySide6.QtGui import QFont, QPixmap, QPalette, QColor, QIcon, QPainter, QBrush, QAction, QTextCursor
 import sys
 import os
 # Добавляем путь к src в PYTHONPATH
@@ -261,6 +261,7 @@ class ChatWidget(QWidget):
                 border: 1px solid #bdc3c7;
                 border-radius: 5px;
                 background-color: white;
+                color: #2c3e50;
                 padding: 10px;
                 font-family: Arial, sans-serif;
                 font-size: 10px;
@@ -278,6 +279,8 @@ class ChatWidget(QWidget):
                 border-radius: 5px;
                 padding: 8px;
                 font-size: 10px;
+                color: #2c3e50;
+                background-color: white;
             }
         """)
         
@@ -360,22 +363,19 @@ class ChatWidget(QWidget):
         message_text = message['message_text']
         timestamp = message['timestamp']
         
-        print(f"=== ДЕТАЛЬНАЯ ОТЛАДКА СООБЩЕНИЯ ===")
-        print(f"Текст: '{message_text}'")
-        print(f"Отправитель: '{sender_id}' (тип: {type(sender_id)})")
-        print(f"Время: {timestamp}")
-        
-        # Проверка на дублирование сообщений
+        # Проверка на дублирование сообщений (упрощенная)
         message_key = f"{sender_id}_{message_text}_{timestamp}"
         if not hasattr(self, '_processed_messages'):
             self._processed_messages = set()
         
         if message_key in self._processed_messages:
-            print(f"Сообщение уже обработано, пропускаем")
             return  # Сообщение уже обработано
         
         self._processed_messages.add(message_key)
-        print(f"Сообщение добавлено в обработанные")
+        
+        # Ограничиваем размер множества обработанных сообщений
+        if len(self._processed_messages) > 100:
+            self._processed_messages.clear()
         
         # Форматирование времени
         try:
@@ -436,10 +436,7 @@ class ChatWidget(QWidget):
             """
         
         # Немедленное добавление в область сообщений
-        cursor = self.messages_area.textCursor()
-        cursor.movePosition(cursor.End)
-        self.messages_area.setTextCursor(cursor)
-        self.messages_area.insertHtml(message_html)
+        self.messages_area.append(message_html)
         
         # Прокрутка к последнему сообщению
         self.messages_area.ensureCursorVisible()
@@ -466,11 +463,9 @@ class ChatWidget(QWidget):
         if not current_user_id:
             print("Ошибка: не удалось определить ID текущего пользователя")
             return
-            
-        print(f"=== ОТЛАДКА ОТПРАВКИ СООБЩЕНИЯ ===")
-        print(f"Отправка сообщения от пользователя: '{current_user_id}' (тип: {type(current_user_id)})")
-        print(f"Текст сообщения: '{message_text}'")
-        print(f"Контакт: '{self.contact_id}'")
+        
+        # Очистка поля ввода
+        self.message_input.clear()
         
         # Создание сообщения
         message = {
@@ -479,16 +474,6 @@ class ChatWidget(QWidget):
             'message_text': message_text,
             'timestamp': datetime.now().isoformat()
         }
-        
-        print(f"Созданное сообщение: {message}")
-        print(f"Проверка sender_id: '{message['sender_id']}' == '{current_user_id}' = {message['sender_id'] == current_user_id}")
-        
-        # Очистка поля ввода
-        self.message_input.clear()
-        
-        # Локальное добавление сообщения в чат (с проверкой на дублирование)
-        print(f"Добавляем сообщение в чат локально...")
-        self.add_message_to_chat(message)
         
         # Отправка через сеть (если подключены)
         if hasattr(main_window, 'network_manager'):
@@ -499,9 +484,8 @@ class ChatWidget(QWidget):
                 'message_text': message['message_text']
             }
             main_window.network_manager.send_client_message(network_message)
-            print(f"Сообщение отправлено через сеть: {message_text}")
-        
-        print(f"=== КОНЕЦ ОТЛАДКИ ОТПРАВКИ ===")
+        else:
+            print("Ошибка: сетевой менеджер не найден")
     
     def call_contact(self):
         """Начало звонка контакту"""
@@ -597,6 +581,17 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #ecf0f1;
+            }
+            QTextEdit {
+                color: #2c3e50;
+                background-color: white;
+            }
+            QLineEdit {
+                color: #2c3e50;
+                background-color: white;
+            }
+            QLabel {
+                color: #2c3e50;
             }
         """)
     
@@ -778,52 +773,27 @@ class MainWindow(QMainWindow):
             message_text = message.get('message_text')
             timestamp = message.get('timestamp', time.time())
             
-            print(f"=== ОТЛАДКА ВХОДЯЩЕГО СООБЩЕНИЯ ===")
-            print(f"Получено сообщение: {sender_id} -> {receiver_id}: {message_text}")
-            
             # Надёжная проверка на собственные сообщения
             current_user_id = self.current_user_id
-            print(f"Текущий пользователь: '{current_user_id}' (тип: {type(current_user_id)})")
-            print(f"Отправитель: '{sender_id}' (тип: {type(sender_id)})")
             
             # Детальное сравнение
             sender_clean = str(sender_id).strip()
             current_clean = str(current_user_id).strip()
-            direct_comparison = (sender_id == current_user_id)
-            string_comparison = (sender_clean == current_clean)
+            is_own_message = (sender_clean == current_clean)
             
-            print(f"Прямое сравнение: {sender_id} == {current_user_id} = {direct_comparison}")
-            print(f"Строковое сравнение: '{sender_clean}' == '{current_clean}' = {string_comparison}")
-            
-            is_own_message = string_comparison
-            
-            print(f"Итоговое решение: собственное сообщение = {is_own_message}")
-            
-            # Пропускаем собственные сообщения, которые уже отображены локально
-            if is_own_message:
-                print(f"✓ Пропускаем собственное сообщение, оно уже отображено локально")
-                print(f"=== КОНЕЦ ОТЛАДКИ ВХОДЯЩЕГО СООБЩЕНИЯ ===")
-                return
-            
-            print(f"✓ Это сообщение от другого пользователя, обрабатываем")
-            
-            # Сохранение сообщения в БД
+                        # Сохранение сообщения в БД
             if sender_id and receiver_id and message_text:
                 self.database.add_message(sender_id, receiver_id, message_text)
-                print(f"Сообщение сохранено в БД")
                 
                 # Немедленное обновление активного чата, если это относится к текущему чату
                 if self.current_chat and hasattr(self.current_chat, 'contact_id'):
                     chat_contact_id = self.current_chat.contact_id
-                    print(f"Активный чат: {chat_contact_id}")
                     
                     # Показываем сообщение, если:
                     # 1. Это сообщение от контакта к нам
                     # 2. Это наше сообщение к контакту
                     if ((sender_id == chat_contact_id and receiver_id == self.current_user_id) or
                         (sender_id == self.current_user_id and receiver_id == chat_contact_id)):
-                        
-                        print(f"✓ Сообщение относится к активному чату, отображаем немедленно")
                         
                         message_data = {
                             'sender_id': sender_id,
@@ -838,25 +808,18 @@ class MainWindow(QMainWindow):
                         # Обновление времени последнего сообщения в чате
                         self.current_chat.last_message_timestamp = message_data['timestamp']
                         
-                        # Воспроизведение звука уведомления для входящих сообщений
+                        # Воспроизведение звука уведомления только для входящих сообщений
                         if (sender_id != self.current_user_id and 
                             self.audio_manager and 
                             config.ENABLE_SOUND_NOTIFICATIONS):
                             try:
                                 self.audio_manager.play_notification_sound()
-                                print("Звук уведомления воспроизведен")
                             except:
-                                print("Ошибка воспроизведения звука")
                                 pass  # Игнорируем ошибки воспроизведения звука
-                    else:
-                        print(f"✗ Сообщение не относится к активному чату")
                 
                 # Обновление индикатора новых сообщений в списке контактов
                 if config.ENABLE_VISUAL_NOTIFICATIONS:
                     self.update_contact_message_indicator(sender_id, receiver_id)
-                    print("Индикатор новых сообщений обновлен")
-            
-            print(f"=== КОНЕЦ ОТЛАДКИ ВХОДЯЩЕГО СООБЩЕНИЯ ===")
         
         elif message_type == 'user_list_response':
             # Обновление списка пользователей

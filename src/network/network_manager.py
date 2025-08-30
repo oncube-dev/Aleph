@@ -113,15 +113,22 @@ class NetworkManager:
     def handle_client(self, client_socket: socket.socket, address: tuple):
         """Обработка клиентского подключения"""
         print(f"Начало обработки клиента {address}")
+        print(f"Клиентский сокет: {client_socket}")
+        print(f"is_running: {self.is_running}")
+        
         try:
             while self.is_running:
                 print(f"Ожидание данных от клиента {address}...")
+                print(f"Сокет активен: {client_socket.fileno() != -1}")
+                
                 data = client_socket.recv(4096)
+                print(f"Получены данные от {address}: {data}")
+                print(f"Размер данных: {len(data) if data else 0} байт")
+                
                 if not data:
-                    print(f"Клиент {address} закрыл соединение")
+                    print(f"Клиент {address} закрыл соединение (пустые данные)")
                     break
                 
-                print(f"Получены данные от {address}: {data}")
                 try:
                     message = json.loads(data.decode('utf-8'))
                     print(f"JSON декодирован успешно: {message}")
@@ -129,9 +136,12 @@ class NetworkManager:
                 except json.JSONDecodeError as e:
                     print(f"Ошибка декодирования JSON от {address}: {e}")
                     print(f"Полученные данные: {data}")
+                    print(f"Декодированная строка: {data.decode('utf-8', errors='ignore')}")
                     
         except Exception as e:
             print(f"Ошибка обработки клиента {address}: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             print(f"Завершение обработки клиента {address}")
             # Удаление пользователя из списка подключенных
@@ -162,8 +172,24 @@ class NetworkManager:
         """Обработка запроса аутентификации"""
         user_id = message.get('user_id')
         print(f"Обработка запроса аутентификации для пользователя: {user_id}")
+        print(f"Клиентский сокет: {client_socket}")
+        print(f"Адрес клиента: {address}")
         
         if user_id:
+            # Проверяем, разрешен ли пользователь
+            allowed_users = ["user1", "user2", "user3", "admin", "test"]
+            
+            if user_id not in allowed_users:
+                # Отправляем ошибку аутентификации
+                response = {
+                    'type': 'auth_response',
+                    'success': False,
+                    'message': f'Пользователь {user_id} не разрешен. Разрешенные пользователи: {", ".join(allowed_users)}'
+                }
+                print(f"Отправляем ошибку клиенту {address}: {response}")
+                self.send_message(client_socket, response)
+                return
+            
             # Проверяем, существует ли пользователь, если нет - создаем
             user = self.database.get_user(user_id)
             if not user:
@@ -188,7 +214,10 @@ class NetworkManager:
                 'user_id': user_id,
                 'message': 'Аутентификация успешна'
             }
+            print(f"Подготовлен ответ: {response}")
+            print(f"Отправляем ответ клиенту {address}...")
             self.send_message(client_socket, response)
+            print(f"Ответ отправлен клиенту {address}")
             
             print(f"Пользователь {user_id} успешно аутентифицирован")
             print(f"Подключенные пользователи: {list(self.connected_users.keys())}")
@@ -199,6 +228,7 @@ class NetworkManager:
                 'success': False,
                 'message': 'Не указан ID пользователя'
             }
+            print(f"Отправляем ошибку клиенту {address}: {response}")
             self.send_message(client_socket, response)
     
     def handle_text_message(self, message: Dict, client_socket: socket.socket, address: tuple):
@@ -344,11 +374,20 @@ class NetworkManager:
     def send_message(self, client_socket: socket.socket, message: Dict):
         """Отправка сообщения клиенту"""
         try:
+            print(f"Подготовка к отправке сообщения: {message}")
             data = json.dumps(message).encode('utf-8')
-            client_socket.send(data)
+            print(f"Закодированные данные: {data}")
+            print(f"Размер данных: {len(data)} байт")
+            print(f"Клиентский сокет: {client_socket}")
+            print(f"Сокет закрыт: {client_socket.fileno() == -1}")
+            
+            bytes_sent = client_socket.send(data)
+            print(f"Отправлено байт: {bytes_sent}")
             print(f"Сервер отправил сообщение: {message}")
         except Exception as e:
             print(f"Ошибка отправки сообщения: {e}")
+            import traceback
+            traceback.print_exc()
     
     def heartbeat_loop(self):
         """Цикл отправки heartbeat сообщений"""
